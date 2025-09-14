@@ -1,0 +1,6 @@
+#Packages being used
+seaborn
+pandas
+numpy
+matplotlib
+scipy
