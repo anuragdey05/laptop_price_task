@@ -1,0 +1,23 @@
+LAPTOP PRICE PREDICTION - TRAINING RESULTS
+Training Date: 2025-09-16 20:17:29
+
+LINEAR REGRESSION
+------------------------------
+Test RMSE: 36507.48
+Test MAE:  25845.57
+Test R²:   -0.0283
+
+POLYNOMIAL REGRESSION
+------------------------------
+Test RMSE: 88809.20
+Test MAE:  52237.97
+Test R²:   -5.0853
+
+LASSO REGRESSION
+------------------------------
+Test RMSE: 36507.47
+Test MAE:  25845.58
+Test R²:   -0.0283
+
+BEST MODEL: Lasso Regression
+Best RMSE: 36507.47
