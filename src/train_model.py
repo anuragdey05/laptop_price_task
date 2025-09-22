@@ -1,8 +1,3 @@
-"""
-Laptop Price Prediction - Model Training
-Clean, concise implementation of multiple regression models
-"""
-
 import pandas as pd
 import numpy as np
 import os
@@ -12,8 +7,6 @@ from itertools import combinations
 
 
 class BaseRegression:
-    """Base class for all regression models"""
-    
     def __init__(self, learning_rate=0.01, n_iterations=1000, verbose=True):
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
@@ -36,17 +29,14 @@ class BaseRegression:
         self.bias = 0.0
 
         for i in range(self.n_iterations):
-            # Shuffle data
             indices = np.random.permutation(n_samples)
             X_shuffled = X[indices]
             y_shuffled = y[indices]
             
-            # Compute gradients and update parameters
             dw, db = self._compute_gradient(X_shuffled, y_shuffled)
             self.weights -= self.learning_rate * dw.astype(np.float64)
             self.bias -= self.learning_rate * float(db)
             
-            # Print progress
             if self.verbose and i % 200 == 0:
                 pred = self.predict(X)
                 cost = np.mean((pred - y)**2) / 2
@@ -89,16 +79,12 @@ class PolynomialFeatures:
         X = np.array(X)
         n_samples, n_features = X.shape
         
-        # Start with linear terms
         features = [X[:, i:i+1] for i in range(n_features)]
         
-        # Add polynomial terms
         if self.degree > 1:
             for d in range(2, self.degree + 1):
-                # Single feature powers
                 for i in range(n_features):
                     features.append(X[:, i:i+1]**d)
-                # Interaction terms (only for degree 2)
                 if d == 2:
                     for i, j in combinations(range(n_features), 2):
                         features.append((X[:, i] * X[:, j]).reshape(-1, 1))
@@ -107,7 +93,6 @@ class PolynomialFeatures:
 
 
 def load_data():
-    """Load and prepare training data"""
     print("Loading preprocessed data...")
     X_train = pd.read_csv('data/X_train.csv').to_numpy().astype(np.float64)
     X_test = pd.read_csv('data/X_test.csv').to_numpy().astype(np.float64)
@@ -119,7 +104,6 @@ def load_data():
 
 
 def calculate_metrics(y_true, y_pred):
-    """Calculate regression metrics"""
     mse = np.mean((y_true - y_pred)**2)
     rmse = np.sqrt(mse)
     mae = np.mean(np.abs(y_true - y_pred))
@@ -132,19 +116,16 @@ def calculate_metrics(y_true, y_pred):
 
 
 def inverse_log_transform(y_log):
-    """Convert log predictions back to original scale"""
     return np.expm1(y_log)
 
 
 def cross_validate_lasso(X, y):
-    """Find best alpha for Lasso regression"""
     print("Running cross-validation for Lasso...")
     
     alphas = np.logspace(-4, 2, 8)
     best_alpha = alphas[0]
     best_rmse = float('inf')
     
-    # Simple 5-fold cross-validation
     n_samples = len(X)
     fold_size = n_samples // 5
     
@@ -152,7 +133,6 @@ def cross_validate_lasso(X, y):
         fold_rmses = []
         
         for fold in range(5):
-            # Split data
             val_start = fold * fold_size
             val_end = val_start + fold_size
             val_indices = slice(val_start, val_end)
@@ -161,7 +141,6 @@ def cross_validate_lasso(X, y):
             X_fold_train, y_fold_train = X[train_indices], y[train_indices]
             X_fold_val, y_fold_val = X[val_indices], y[val_indices]
             
-            # Train and evaluate
             model = LassoRegression(alpha=alpha, n_iterations=500, verbose=False)
             model.fit(X_fold_train, y_fold_train)
             
@@ -181,24 +160,19 @@ def cross_validate_lasso(X, y):
 
 
 def train_single_model(model_class, model_name, X_train, X_test, y_train, y_test, **model_kwargs):
-    """Train a single model and return results"""
     print(f"\nTraining {model_name}...")
     
-    # Train model
     model = model_class(**model_kwargs)
     model.fit(X_train, y_train)
     
-    # Make predictions
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
     
-    # Convert to original scale
     y_train_orig = inverse_log_transform(y_train)
     y_test_orig = inverse_log_transform(y_test)
     y_train_pred_orig = inverse_log_transform(y_train_pred)
     y_test_pred_orig = inverse_log_transform(y_test_pred)
     
-    # Calculate metrics
     train_metrics = calculate_metrics(y_train_orig, y_train_pred_orig)
     test_metrics = calculate_metrics(y_test_orig, y_test_pred_orig)
     
@@ -216,7 +190,6 @@ def train_single_model(model_class, model_name, X_train, X_test, y_train, y_test
 
 
 def train_polynomial_models(X_train, X_test, y_train, y_test):
-    """Train polynomial regression models with different degrees"""
     print("\nTraining Polynomial Regression...")
     
     degrees = [2, 3, 4]
@@ -226,19 +199,16 @@ def train_polynomial_models(X_train, X_test, y_train, y_test):
     for degree in degrees:
         print(f"\n  Testing degree {degree}...")
         
-        # Create polynomial features
         poly_transformer = PolynomialFeatures(degree=degree)
         X_train_poly = poly_transformer.fit_transform(X_train)
         X_test_poly = poly_transformer.fit_transform(X_test)
         
         print(f"    Features: {X_train.shape[1]} → {X_train_poly.shape[1]}")
         
-        # Skip if too many features
         if X_train_poly.shape[1] > X_train.shape[0]:
             print(f"    Skipped (too many features)")
             continue
         
-        # Train model with adaptive learning rate
         lr = 0.001 / np.sqrt(degree)
         result = train_single_model(
             LinearRegression, f"Polynomial (degree {degree})",
@@ -246,11 +216,9 @@ def train_polynomial_models(X_train, X_test, y_train, y_test):
             learning_rate=lr, verbose=False
         )
         
-        # Store transformer with result
         result['transformer'] = poly_transformer
         result['degree'] = degree
         
-        # Track best model
         if result['test_metrics']['RMSE'] < best_rmse:
             best_rmse = result['test_metrics']['RMSE']
             best_result = result
@@ -262,11 +230,9 @@ def train_polynomial_models(X_train, X_test, y_train, y_test):
 
 
 def save_results(results, best_model_name):
-    """Save training results to files"""
     os.makedirs('models', exist_ok=True)
     os.makedirs('results', exist_ok=True)
     
-    # Save individual models
     model_files = {
         'Linear Regression': 'models/regression_model1.pkl',
         'Polynomial Regression': 'models/regression_model2.pkl', 
@@ -277,7 +243,6 @@ def save_results(results, best_model_name):
         if model_name in model_files:
             with open(model_files[model_name], 'wb') as f:
                 if 'transformer' in result:
-                    # Save polynomial model with transformer
                     pickle.dump({
                         'model': result['model'],
                         'transformer': result['transformer'],
@@ -286,11 +251,9 @@ def save_results(results, best_model_name):
                 else:
                     pickle.dump(result['model'], f)
     
-    # Save best model
     with open('models/regression_model_final.pkl', 'wb') as f:
         pickle.dump(results[best_model_name]['model'], f)
     
-    # Save metrics
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open('results/train_metrics.txt', 'w') as f:
         f.write(f"LAPTOP PRICE PREDICTION - TRAINING RESULTS\n")
@@ -312,32 +275,25 @@ def save_results(results, best_model_name):
 
 
 def main():
-    """Main training pipeline"""
     print("="*60)
     print("LAPTOP PRICE PREDICTION - MODEL TRAINING")
     print("="*60)
     
-    # Set random seed
     np.random.seed(42)
     
-    # Load data
     X_train, X_test, y_train, y_test = load_data()
     
-    # Train models
     results = {}
     
-    # 1. Linear Regression
     results['Linear Regression'] = train_single_model(
         LinearRegression, 'Linear Regression',
         X_train, X_test, y_train, y_test
     )
     
-    # 2. Polynomial Regression
     poly_result = train_polynomial_models(X_train, X_test, y_train, y_test)
     if poly_result:
         results['Polynomial Regression'] = poly_result
     
-    # 3. Lasso Regression
     best_alpha = cross_validate_lasso(X_train, y_train)
     results['Lasso Regression'] = train_single_model(
         LassoRegression, 'Lasso Regression',
@@ -345,7 +301,6 @@ def main():
         alpha=best_alpha
     )
     
-    # Find best model
     print("\n" + "="*50)
     print("MODEL COMPARISON")
     print("="*50)
@@ -364,7 +319,6 @@ def main():
     
     print(f"\nBest Model: {best_model_name} (RMSE: {best_rmse:.2f})")
     
-    # Save results
     save_results(results, best_model_name)
     print("Training completed successfully!")
 

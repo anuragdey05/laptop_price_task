@@ -1,8 +1,3 @@
-"""
-Laptop Price Prediction - Model Prediction
-Clean, concise implementation for making predictions
-"""
-
 import pandas as pd
 import numpy as np
 import pickle
@@ -10,24 +5,20 @@ import os
 import sys
 from datetime import datetime
 
-# Import model classes
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from train_model import LinearRegression, LassoRegression, PolynomialFeatures
 
 
 def load_model(model_path):
-    """Load trained model from pickle file"""
     with open(model_path, 'rb') as f:
         return pickle.load(f)
 
 
 def inverse_log_transform(y_log):
-    """Convert log predictions back to original price scale"""
     return np.expm1(np.array(y_log))
 
 
 def calculate_metrics(y_true, y_pred):
-    """Calculate prediction metrics"""
     mse = np.mean((y_true - y_pred)**2)
     rmse = np.sqrt(mse)
     mae = np.mean(np.abs(y_true - y_pred))
@@ -40,16 +31,12 @@ def calculate_metrics(y_true, y_pred):
 
 
 def make_predictions(model_path, data_path, output_path):
-    """Make predictions using trained model"""
     print(f"Loading model from {model_path}...")
     
-    # Load model
     model_data = load_model(model_path)
     X = pd.read_csv(data_path).to_numpy().astype(np.float64)
     
-    # Handle different model types
     if isinstance(model_data, dict) and 'transformer' in model_data:
-        # Polynomial regression
         transformer = model_data['transformer']
         model = model_data['model']
         degree = model_data.get('degree', 2)
@@ -58,20 +45,16 @@ def make_predictions(model_path, data_path, output_path):
         print(f"Using polynomial regression (degree {degree})")
         print(f"Features: {X.shape[1]} → {X_transformed.shape[1]}")
     else:
-        # Linear or Lasso regression
         model = model_data
         y_pred_log = model.predict(X)
     
-    # Convert to original scale
     y_pred_original = inverse_log_transform(y_pred_log)
     
-    # Create results dataframe
     results = pd.DataFrame({
         'Predicted_Price_Log': y_pred_log,
         'Predicted_Price': y_pred_original
     })
     
-    # Add true values if available (test data)
     if 'test' in data_path.lower():
         try:
             y_true = pd.read_csv('data/y_test.csv').values.ravel()
@@ -82,14 +65,12 @@ def make_predictions(model_path, data_path, output_path):
             results['Error'] = abs(y_true_original - y_pred_original)
             results['Error_Percentage'] = (results['Error'] / y_true_original) * 100
             
-            # Calculate and display metrics
             metrics = calculate_metrics(y_true_original, y_pred_original)
             print(f"\nPrediction Metrics:")
             print(f"RMSE: ₹{metrics['RMSE']:,.0f}")
             print(f"MAE:  ₹{metrics['MAE']:,.0f}")
             print(f"R²:   {metrics['R2']:.4f}")
             
-            # Save metrics
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open('results/prediction_metrics.txt', 'w') as f:
                 f.write(f"PREDICTION METRICS\n")
@@ -103,12 +84,10 @@ def make_predictions(model_path, data_path, output_path):
         except FileNotFoundError:
             print("No test labels found - predictions only")
     
-    # Save predictions
     os.makedirs('results', exist_ok=True)
     results.to_csv(output_path, index=False)
     print(f"Predictions saved to {output_path}")
     
-    # Display sample predictions
     print(f"\nSample Predictions:")
     print(results.head(10).to_string(index=False, float_format='%.0f'))
     
@@ -116,7 +95,6 @@ def make_predictions(model_path, data_path, output_path):
 
 
 def compare_all_models():
-    """Compare predictions from all trained models"""
     print("="*60)
     print("MODEL COMPARISON")
     print("="*60)
@@ -128,7 +106,6 @@ def compare_all_models():
         'Best Model': 'models/regression_model_final.pkl'
     }
     
-    # Load test data
     X_test = pd.read_csv('data/X_test.csv').to_numpy().astype(np.float64)
     y_test = pd.read_csv('data/y_test.csv').values.ravel()
     y_test_original = inverse_log_transform(y_test)
@@ -142,11 +119,9 @@ def compare_all_models():
             
         print(f"\nTesting {model_name}...")
         
-        # Load and predict
         model_data = load_model(model_path)
         
         if isinstance(model_data, dict) and 'transformer' in model_data:
-            # Polynomial regression
             transformer = model_data['transformer']
             model = model_data['model']
             degree = model_data.get('degree', 2)
@@ -154,13 +129,11 @@ def compare_all_models():
             y_pred_log = model.predict(X_transformed)
             print(f"  Polynomial degree: {degree}")
         else:
-            # Linear or Lasso regression
             model = model_data
             y_pred_log = model.predict(X_test)
         
         y_pred_original = inverse_log_transform(y_pred_log)
         
-        # Calculate metrics
         metrics = calculate_metrics(y_test_original, y_pred_original)
         
         comparison_results.append({
@@ -174,20 +147,17 @@ def compare_all_models():
         print(f"  MAE:  ₹{metrics['MAE']:,.0f}")
         print(f"  R²:   {metrics['R2']:.4f}")
     
-    # Save comparison results
     if comparison_results:
         comparison_df = pd.DataFrame(comparison_results)
         comparison_df.to_csv('results/model_comparison.csv', index=False)
         print(f"\nComparison saved to 'results/model_comparison.csv'")
         
-        # Find best model
         best_model = comparison_df.loc[comparison_df['RMSE'].idxmin()]
         print(f"\nBest Model: {best_model['Model']}")
         print(f"Best RMSE: ₹{best_model['RMSE']:,.0f}")
 
 
 def main():
-    """Main prediction function"""
     print("="*60)
     print("LAPTOP PRICE PREDICTION")
     print("="*60)
@@ -206,7 +176,6 @@ def main():
         else:
             print("Usage: python predict.py [compare|test]")
     else:
-        # Default: predict on test data
         make_predictions(
             'models/regression_model_final.pkl',
             'data/X_test.csv',
